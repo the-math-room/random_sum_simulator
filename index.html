@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Random Sum Simulator</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<main class="app">
+  <header class="app-header">
+    <h1>Random Sum Simulator</h1>
+    <p>
+      Combine coins, dice, weighted events, and custom random objects.
+    </p>
+  </header>
+
+  <section class="setup-panel panel">
+    <h2>Simulation Parameters</h2>
+
+    <div class="compact-grid">
+      <label>
+        Preset
+        <select id="preset"></select>
+      </label>
+
+      <label>
+        Quantity
+        <input id="presetQty" type="number" min="1" value="1" />
+      </label>
+    </div>
+
+    <div class="button-row">
+      <button id="addPreset">Add Object</button>
+      <button id="clearObjects" class="danger">Clear All</button>
+    </div>
+
+    <hr />
+
+    <div class="compact-grid">
+      <label>
+        Trials
+        <input id="trials" type="number" min="1" max="1000000" value="10000" />
+      </label>
+
+      <label>
+        Histogram buckets
+        <input id="maxRows" type="number" min="5" max="500" value="80" />
+      </label>
+    </div>
+
+    <button id="run" class="run-button">Run Simulation</button>
+
+    <div id="error" class="error"></div>
+
+    <hr />
+
+    <h2>Objects</h2>
+    <p class="small">
+      Outcomes use one line per result. Use <code>value</code> or
+      <code>value, weight</code>.
+    </p>
+
+    <div id="objectsBody" class="object-list"></div>
+  </section>
+
+  <section class="results-panel panel">
+    <div class="results-header">
+      <h2>Results</h2>
+      <p class="small">Frequency on the y-axis, sum on the x-axis.</p>
+    </div>
+
+    <div id="stats" class="stats"></div>
+    <div id="chart" class="chart"></div>
+  </section>
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
