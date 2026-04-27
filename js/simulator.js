@@ -17,21 +17,58 @@ export function runSimulation({ randomObjects, trials }) {
     max = Math.max(max, sum);
   }
 
-  const mean = total / trials;
-  const variance = totalSquared / trials - mean * mean;
-  const standardDeviation = Math.sqrt(Math.max(0, variance));
+  const simulatedMean = total / trials;
+  const simulatedVariance = totalSquared / trials - simulatedMean * simulatedMean;
+  const simulatedStandardDeviation = Math.sqrt(Math.max(0, simulatedVariance));
+
+  const expected = calculateExpectedStats(randomObjects);
 
   return {
     counts,
+    expected,
     stats: {
       trials,
-      mean,
-      standardDeviation,
+      mean: simulatedMean,
+      standardDeviation: simulatedStandardDeviation,
+      expectedMean: expected.mean,
+      expectedStandardDeviation: expected.standardDeviation,
       min,
       max,
       uniqueSums: counts.size
     }
   };
+}
+
+export function calculateExpectedStats(randomObjects) {
+  let totalMean = 0;
+  let totalVariance = 0;
+
+  for (const object of randomObjects) {
+    const singleMean = calculateSingleObjectMean(object.outcomes);
+    const singleVariance = calculateSingleObjectVariance(object.outcomes, singleMean);
+
+    totalMean += object.quantity * singleMean;
+    totalVariance += object.quantity * singleVariance;
+  }
+
+  return {
+    mean: totalMean,
+    variance: totalVariance,
+    standardDeviation: Math.sqrt(Math.max(0, totalVariance))
+  };
+}
+
+function calculateSingleObjectMean(outcomes) {
+  return outcomes.reduce((sum, outcome) => {
+    return sum + outcome.value * outcome.probability;
+  }, 0);
+}
+
+function calculateSingleObjectVariance(outcomes, mean) {
+  return outcomes.reduce((sum, outcome) => {
+    const difference = outcome.value - mean;
+    return sum + difference * difference * outcome.probability;
+  }, 0);
 }
 
 function runSingleTrial(randomObjects) {

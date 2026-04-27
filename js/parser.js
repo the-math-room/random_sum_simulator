@@ -36,10 +36,13 @@ function normalizeWeights(outcomes) {
   let cumulative = 0;
 
   const weighted = outcomes.map(item => {
-    cumulative += item.weight / totalWeight;
+    const probability = item.weight / totalWeight;
+    cumulative += probability;
 
     return {
       value: item.value,
+      weight: item.weight,
+      probability,
       cumulative
     };
   });

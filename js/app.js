@@ -76,7 +76,7 @@ function handleRunSimulation() {
     });
 
     renderStats(elements.stats, result.stats);
-    renderHistogram(elements.chart, result.counts, trials, maxRows);
+    renderHistogram(elements.chart, result.counts, trials, maxRows, result.expected);
   } catch (error) {
     elements.error.textContent = error.message;
   }

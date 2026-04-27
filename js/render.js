@@ -1,5 +1,11 @@
 import { escapeHtml, formatNumber, roundNice } from "./utils.js";
 
+export function clearResults({ statsBox, chartBox, errorBox }) {
+  statsBox.innerHTML = "";
+  chartBox.innerHTML = "";
+  errorBox.textContent = "";
+}
+
 export function populatePresetSelect(selectElement, presets) {
   selectElement.innerHTML = "";
 
@@ -58,102 +64,126 @@ export function addRandomObjectRow({ tableBody, name, quantity, outcomes }) {
 export function renderStats(statsBox, stats) {
   statsBox.innerHTML = `
     <div class="stat">Trials <strong>${formatNumber(stats.trials)}</strong></div>
-    <div class="stat">Mean <strong>${formatNumber(stats.mean)}</strong></div>
-    <div class="stat">Std. dev. <strong>${formatNumber(stats.standardDeviation)}</strong></div>
+    <div class="stat">Sim mean <strong>${formatNumber(stats.mean)}</strong></div>
+    <div class="stat">Expected mean <strong>${formatNumber(stats.expectedMean)}</strong></div>
+    <div class="stat">Expected σ <strong>${formatNumber(stats.expectedStandardDeviation)}</strong></div>
     <div class="stat">Min <strong>${formatNumber(stats.min)}</strong></div>
     <div class="stat">Max <strong>${formatNumber(stats.max)}</strong></div>
-    <div class="stat">Unique sums <strong>${formatNumber(stats.uniqueSums)}</strong></div>
   `;
 }
 
-export function renderHistogram(chartBox, counts, trials, maxRows) {
+export function renderHistogram(chartBox, counts, trials, maxRows, expected) {
   let entries = [...counts.entries()]
-    .sort((a, b) => Number(a[0]) - Number(b[0]));
-
-  if (entries.length > maxRows) {
-    entries = bucketEntries(entries, maxRows);
-  } else {
-    entries = entries.map(([label, count]) => ({
-      label: String(label),
+    .map(([value, count]) => ({
+      value: Number(value),
       count
-    }));
+    }))
+    .sort((a, b) => a.value - b.value);
+
+  if (entries.length === 0) {
+    chartBox.innerHTML = "";
+    return;
   }
 
-  const maxCount = Math.max(...entries.map(entry => entry.count));
+  const range = getExpectedDisplayRange(entries, expected);
+  const bins = createCenteredIntegerBins(entries, range.min, range.max, maxRows);
+
+  const maxCount = Math.max(...bins.map(bin => bin.count), 1);
 
   chartBox.innerHTML = `
     <div class="vertical-histogram">
       <div class="y-axis-label">Frequency</div>
 
       <div class="plot-area">
-        ${entries.map(entry => {
-          const percent = entry.count / trials * 100;
-          const height = entry.count / maxCount * 100;
+        ${bins.map(bin => {
+          const percent = bin.count / trials * 100;
+          const height = bin.count / maxCount * 100;
 
           return `
-            <div class="histogram-bar-wrapper" title="Sum: ${escapeHtml(entry.label)}
-Frequency: ${entry.count}
+            <div class="histogram-bar-wrapper" title="Sum: ${escapeHtml(bin.label)}
+Frequency: ${bin.count}
 Percent: ${percent.toFixed(2)}%">
-              <div class="histogram-bar-value">${entry.count}</div>
+              <div class="histogram-bar-value">${bin.count}</div>
               <div 
                 class="histogram-bar" 
                 style="height: ${height}%"
               ></div>
-              <div class="histogram-x-label">${escapeHtml(entry.label)}</div>
+              <div class="histogram-x-label">${escapeHtml(bin.label)}</div>
             </div>
           `;
         }).join("")}
       </div>
 
-      <div class="x-axis-label">Sum</div>
+      <div class="x-axis-label">
+        Sum, centered on expected mean ± 4σ
+      </div>
     </div>
   `;
 }
 
-export function clearResults({ statsBox, chartBox, errorBox }) {
-  statsBox.innerHTML = "";
-  chartBox.innerHTML = "";
-  errorBox.textContent = "";
+function getExpectedDisplayRange(entries, expected) {
+  const observedMin = Math.min(...entries.map(entry => entry.value));
+  const observedMax = Math.max(...entries.map(entry => entry.value));
+
+  if (
+    !expected ||
+    !Number.isFinite(expected.mean) ||
+    !Number.isFinite(expected.standardDeviation) ||
+    expected.standardDeviation === 0
+  ) {
+    return {
+      min: Math.floor(observedMin),
+      max: Math.ceil(observedMax)
+    };
+  }
+
+  return {
+    min: Math.floor(expected.mean - 4 * expected.standardDeviation),
+    max: Math.ceil(expected.mean + 4 * expected.standardDeviation)
+  };
 }
 
-function bucketEntries(entries, maxRows) {
-  const values = entries.map(([value]) => Number(value));
-  const min = Math.floor(Math.min(...values));
-  const max = Math.ceil(Math.max(...values));
-
+function createCenteredIntegerBins(entries, min, max, maxBins) {
   const totalIntegerValues = max - min + 1;
-  const bucketCount = Math.min(maxRows, totalIntegerValues);
-  const bucketSize = Math.ceil(totalIntegerValues / bucketCount);
+  const interiorBinCount = Math.min(maxBins, totalIntegerValues);
+  const bucketSize = Math.max(1, Math.ceil(totalIntegerValues / interiorBinCount));
 
-  const buckets = [];
+  const bins = [];
+
+  bins.push({
+    start: -Infinity,
+    end: min - 1,
+    label: `< ${min}`,
+    count: 0
+  });
 
   for (let start = min; start <= max; start += bucketSize) {
     const end = Math.min(max, start + bucketSize - 1);
 
-    buckets.push({
+    bins.push({
       start,
       end,
+      label: start === end ? String(start) : `${start}–${end}`,
       count: 0
     });
   }
 
-  for (const [value, count] of entries) {
-    const numericValue = Number(value);
+  bins.push({
+    start: max + 1,
+    end: Infinity,
+    label: `> ${max}`,
+    count: 0
+  });
 
-    const bucketIndex = Math.min(
-      buckets.length - 1,
-      Math.floor((numericValue - min) / bucketSize)
-    );
+  for (const entry of entries) {
+    const matchingBin = bins.find(bin => {
+      return entry.value >= bin.start && entry.value <= bin.end;
+    });
 
-    buckets[bucketIndex].count += count;
+    if (matchingBin) {
+      matchingBin.count += entry.count;
+    }
   }
 
-  return buckets
-    .filter(bucket => bucket.count > 0)
-    .map(bucket => ({
-      label: bucket.start === bucket.end
-        ? String(bucket.start)
-        : `${bucket.start}–${bucket.end}`,
-      count: bucket.count
-    }));
+  return bins.filter(bin => bin.count > 0 || Number.isFinite(bin.start));
 }
