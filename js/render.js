@@ -67,8 +67,8 @@ export function renderStats(statsBox, stats) {
     <div class="stat">Sim mean <strong>${formatNumber(stats.mean)}</strong></div>
     <div class="stat">Expected mean <strong>${formatNumber(stats.expectedMean)}</strong></div>
     <div class="stat">Expected σ <strong>${formatNumber(stats.expectedStandardDeviation)}</strong></div>
-    <div class="stat">Min <strong>${formatNumber(stats.min)}</strong></div>
-    <div class="stat">Max <strong>${formatNumber(stats.max)}</strong></div>
+    <div class="stat">Within ±1σ <strong>${formatNumber(stats.withinOneExpectedStandardDeviationPercent)}%</strong></div>
+    <div class="stat">Count in ±1σ <strong>${formatNumber(stats.withinOneExpectedStandardDeviationCount)}</strong></div>
   `;
 }
 

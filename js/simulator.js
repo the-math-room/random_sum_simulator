@@ -6,6 +6,14 @@ export function runSimulation({ randomObjects, trials }) {
   let min = Infinity;
   let max = -Infinity;
 
+  const expected = calculateExpectedStats(randomObjects);
+  const withinOneExpectedStandardDeviationMin =
+    expected.mean - expected.standardDeviation;
+  const withinOneExpectedStandardDeviationMax =
+    expected.mean + expected.standardDeviation;
+
+  let withinOneExpectedStandardDeviationCount = 0;
+
   for (let trial = 0; trial < trials; trial++) {
     const sum = runSingleTrial(randomObjects);
 
@@ -15,13 +23,21 @@ export function runSimulation({ randomObjects, trials }) {
     totalSquared += sum * sum;
     min = Math.min(min, sum);
     max = Math.max(max, sum);
+
+    if (
+      sum >= withinOneExpectedStandardDeviationMin &&
+      sum <= withinOneExpectedStandardDeviationMax
+    ) {
+      withinOneExpectedStandardDeviationCount++;
+    }
   }
 
   const simulatedMean = total / trials;
   const simulatedVariance = totalSquared / trials - simulatedMean * simulatedMean;
   const simulatedStandardDeviation = Math.sqrt(Math.max(0, simulatedVariance));
 
-  const expected = calculateExpectedStats(randomObjects);
+  const withinOneExpectedStandardDeviationPercent =
+    withinOneExpectedStandardDeviationCount / trials * 100;
 
   return {
     counts,
@@ -32,6 +48,8 @@ export function runSimulation({ randomObjects, trials }) {
       standardDeviation: simulatedStandardDeviation,
       expectedMean: expected.mean,
       expectedStandardDeviation: expected.standardDeviation,
+      withinOneExpectedStandardDeviationCount,
+      withinOneExpectedStandardDeviationPercent,
       min,
       max,
       uniqueSums: counts.size
