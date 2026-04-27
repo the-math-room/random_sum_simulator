@@ -118,35 +118,42 @@ export function clearResults({ statsBox, chartBox, errorBox }) {
 
 function bucketEntries(entries, maxRows) {
   const values = entries.map(([value]) => Number(value));
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const bucketCount = maxRows;
-  const bucketSize = (max - min + 1) / bucketCount;
+  const min = Math.floor(Math.min(...values));
+  const max = Math.ceil(Math.max(...values));
 
-  const buckets = Array.from({ length: bucketCount }, (_, i) => {
-    const start = min + i * bucketSize;
-    const end = min + (i + 1) * bucketSize;
+  const totalIntegerValues = max - min + 1;
+  const bucketCount = Math.min(maxRows, totalIntegerValues);
+  const bucketSize = Math.ceil(totalIntegerValues / bucketCount);
 
-    return {
+  const buckets = [];
+
+  for (let start = min; start <= max; start += bucketSize) {
+    const end = Math.min(max, start + bucketSize - 1);
+
+    buckets.push({
       start,
       end,
       count: 0
-    };
-  });
+    });
+  }
 
   for (const [value, count] of entries) {
-    const index = Math.min(
-      bucketCount - 1,
-      Math.floor((Number(value) - min) / bucketSize)
+    const numericValue = Number(value);
+
+    const bucketIndex = Math.min(
+      buckets.length - 1,
+      Math.floor((numericValue - min) / bucketSize)
     );
 
-    buckets[index].count += count;
+    buckets[bucketIndex].count += count;
   }
 
   return buckets
     .filter(bucket => bucket.count > 0)
     .map(bucket => ({
-      label: `${roundNice(bucket.start)}–${roundNice(bucket.end)}`,
+      label: bucket.start === bucket.end
+        ? String(bucket.start)
+        : `${bucket.start}–${bucket.end}`,
       count: bucket.count
     }));
 }
